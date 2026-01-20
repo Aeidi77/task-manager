@@ -1,0 +1,75 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  name      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  ownedTaskLists TaskList[]      @relation("TaskListOwner")
+  collaborations Collaborator[]
+  createdTasks   Task[]
+
+  @@map("users")
+}
+
+model TaskList {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  ownerId     String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  deletedAt   DateTime?
+
+  owner         User           @relation("TaskListOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  tasks         Task[]
+  collaborators Collaborator[]
+
+  @@map("task_lists")
+}
+
+model Task {
+  id          String    @id @default(cuid())
+  title       String
+  status      TaskStatus @default(TODO)
+  deadline    DateTime?
+  order       Int       @default(0)
+  taskListId  String
+  createdById String
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  deletedAt   DateTime?
+
+  taskList  TaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  createdBy User     @relation(fields: [createdById], references: [id])
+
+  @@map("tasks")
+}
+
+model Collaborator {
+  id         String   @id @default(cuid())
+  taskListId String
+  userId     String
+  createdAt  DateTime @default(now())
+
+  taskList TaskList @relation(fields: [taskListId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskListId, userId])
+  @@map("collaborators")
+}
+
+enum TaskStatus {
+  TODO
+  IN_PROGRESS
+  DONE
+}

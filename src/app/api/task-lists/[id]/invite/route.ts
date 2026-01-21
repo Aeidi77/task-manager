@@ -1,112 +1,73 @@
+// src/app/api/task-lists/[id]/invite/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { ApiResponse } from '@/types'
+import { requireAuth } from '@/lib/auth'
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: { id: string } }
-) {
+export async function POST(request: NextRequest, { params }: { params: any }) {
   try {
-    const user = await requireAuth()
-    const { id } = params
-    const body = await request.json()
-    const { email } = body
+    // 1️⃣ Unwrap params.id karena sekarang Promise
+    const resolvedParams = await params
+    const { id } = resolvedParams
 
-    if (!email || email.trim() === '') {
-      return NextResponse.json(
-        { error: 'Email is required' } as ApiResponse,
-        { status: 400 }
-      )
+    // 2️⃣ Ambil email dari request body
+    const { email } = await request.json()
+    if (!email) {
+      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
-    // Cek apakah user adalah owner
+    // 3️⃣ Pastikan user login
+    const user = await requireAuth()
+    if (!user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
+    // 4️⃣ Cek apakah task list ada dan milik user
     const taskList = await prisma.taskList.findFirst({
       where: {
         id,
-        ownerId: user.userId,
-        deletedAt: null
+        deletedAt: null,
+        ownerId: user.userId
       }
     })
 
     if (!taskList) {
-      return NextResponse.json(
-        { error: 'Task list not found or you do not have permission' } as ApiResponse,
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'Task list not found or not allowed' }, { status: 404 })
     }
 
-    // Cari user yang akan diundang
+    // 5️⃣ Cek apakah user yang diundang ada
     const invitedUser = await prisma.user.findUnique({
-      where: { email: email.trim() }
+      where: { email }
     })
 
     if (!invitedUser) {
-      return NextResponse.json(
-        { error: 'User with this email not found' } as ApiResponse,
-        { status: 404 }
-      )
+      return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
-    // Cek apakah sudah collaborator atau owner
-    if (invitedUser.id === user.userId) {
-      return NextResponse.json(
-        { error: 'You cannot invite yourself' } as ApiResponse,
-        { status: 400 }
-      )
-    }
-
-    const existingCollaborator = await prisma.collaborator.findUnique({
+    // 6️⃣ Cek apakah user sudah collaborator
+    const exists = await prisma.collaborator.findUnique({
       where: {
         taskListId_userId: {
-          taskListId: id,
+          taskListId: id,       // <- pakai id nyata
           userId: invitedUser.id
         }
       }
     })
 
-    if (existingCollaborator) {
-      return NextResponse.json(
-        { error: 'User is already a collaborator' } as ApiResponse,
-        { status: 409 }
-      )
+    if (exists) {
+      return NextResponse.json({ error: 'User is already a collaborator' }, { status: 400 })
     }
 
-    // Tambahkan sebagai collaborator
+    // 7️⃣ Tambahkan collaborator
     const collaborator = await prisma.collaborator.create({
       data: {
         taskListId: id,
         userId: invitedUser.id
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            email: true,
-            name: true
-          }
-        }
       }
     })
 
-    return NextResponse.json(
-      { 
-        data: collaborator, 
-        message: 'Collaborator added successfully' 
-      } as ApiResponse,
-      { status: 201 }
-    )
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse,
-        { status: 401 }
-      )
-    }
-    console.error('Invite collaborator error:', error)
-    return NextResponse.json(
-      { error: 'Internal server error' } as ApiResponse,
-      { status: 500 }
-    )
+    return NextResponse.json({ success: true, collaborator })
+  } catch (err: any) {
+    console.error(err)
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

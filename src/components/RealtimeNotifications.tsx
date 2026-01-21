@@ -2,8 +2,9 @@
 
 import { useEffect, useState } from 'react'
 import { usePolling } from '@/hooks/use-polling'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 import { Bell } from 'lucide-react'
+
 import { Button } from './ui/button'
 import {
   DropdownMenu,
@@ -30,15 +31,17 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
   const [lastCheck, setLastCheck] = useState<Date>(new Date())
   const [notifications, setNotifications] = useState<TaskUpdate[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
-  const { toast } = useToast()
 
+  // Fetch data task list
   const fetchUpdates = async () => {
     const res = await fetch('/api/task-lists')
+    if (!res.ok) return []
     const data = await res.json()
     return data.data || []
   }
 
-  const { data: taskLists } = usePolling(fetchUpdates, 10000) // Poll every 10 seconds
+  // Polling setiap 10 detik
+  const { data: taskLists } = usePolling(fetchUpdates, 10000)
 
   useEffect(() => {
     if (!taskLists) return
@@ -47,11 +50,10 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
 
     taskLists.forEach((taskList: any) => {
       const updatedAt = new Date(taskList.updatedAt)
-      
-      // Check if updated after last check and not by current user
+
+      // Update setelah lastCheck & bukan oleh user sendiri
       if (updatedAt > lastCheck && taskList.ownerId !== userId) {
-        // Check if any collaborator made the update
-        const isCollaboratorUpdate = taskList.collaborators.some(
+        const isCollaboratorUpdate = taskList.collaborators?.some(
           (c: any) => c.userId !== userId
         )
 
@@ -60,20 +62,19 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
             taskListId: taskList.id,
             taskListName: taskList.name,
             updatedAt: taskList.updatedAt,
-            updatedBy: taskList.owner.email
+            updatedBy: taskList.owner?.email || 'Unknown',
           })
         }
       }
     })
 
     if (newUpdates.length > 0) {
-      setNotifications((prev) => [...newUpdates, ...prev].slice(0, 10)) // Keep last 10
+      setNotifications((prev) => [...newUpdates, ...prev].slice(0, 10))
       setUnreadCount((prev) => prev + newUpdates.length)
 
-      // Show toast for first new update
-      toast({
-        title: 'New Update',
-        description: `${newUpdates[0].taskListName} has been updated`
+      // Toast pakai Sonner
+      toast('New Update', {
+        description: `${newUpdates[0].taskListName} has been updated`,
       })
     }
 
@@ -104,6 +105,7 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
           )}
         </Button>
       </DropdownMenuTrigger>
+
       <DropdownMenuContent align="end" className="w-80">
         <DropdownMenuLabel className="flex items-center justify-between">
           <span>Notifications</span>
@@ -118,14 +120,19 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
             </Button>
           )}
         </DropdownMenuLabel>
+
         <DropdownMenuSeparator />
+
         {notifications.length === 0 ? (
           <div className="p-4 text-center text-sm text-muted-foreground">
             No new notifications
           </div>
         ) : (
           notifications.map((notif, index) => (
-            <DropdownMenuItem key={index} className="flex flex-col items-start p-3">
+            <DropdownMenuItem
+              key={index}
+              className="flex flex-col items-start gap-1 p-3"
+            >
               <div className="font-medium">{notif.taskListName}</div>
               <div className="text-xs text-muted-foreground">
                 Updated by {notif.updatedBy}

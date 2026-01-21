@@ -5,17 +5,20 @@ import { useRouter } from 'next/navigation'
 import { Button } from './ui/button'
 import { ThemeToggle } from './ThemeToggle'
 import { RealtimeNotifications } from './RealtimeNotifications'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 
 export function Navbar() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
+  const isMounted = useRef(true)
 
   useEffect(() => {
+    isMounted.current = true
+    
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
+        const res = await fetch('/api/auth/logout')
+        if (res.ok && isMounted.current) {
           const data = await res.json()
           setUserId(data.data.id)
         }
@@ -25,15 +28,22 @@ export function Navbar() {
     }
 
     fetchUser()
+
+    return () => {
+      isMounted.current = false // ✅ Cleanup
+    }
   }, [])
 
   const handleLogout = async () => {
     try {
-      await fetch('/api/auth/me', {
+      await fetch('/api/auth/logout', {
         method: 'DELETE'
       })
       router.push('/login')
-      router.refresh()
+      // Hapus router.refresh() atau gunakan setTimeout
+      setTimeout(() => {
+        window.location.reload() // Atau biarkan router.push saja
+      }, 100)
     } catch (error) {
       console.error('Logout error:', error)
     }
@@ -48,7 +58,12 @@ export function Navbar() {
         <div className="flex items-center gap-2">
           {userId && <RealtimeNotifications userId={userId} />}
           <ThemeToggle />
-          <Button variant="outline" onClick={handleLogout}>
+          <Button 
+            variant="outline" 
+            onClick={handleLogout}
+            // Tambahkan key untuk force re-render jika diperlukan
+            key={`logout-${Date.now()}`}
+          >
             Logout
           </Button>
         </div>

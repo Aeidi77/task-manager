@@ -15,7 +15,7 @@ import {
 import { Input } from './ui/input'
 import { Label } from './ui/label'
 import { UserPlus } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 interface InviteCollaboratorDialogProps {
   taskListId: string
@@ -26,7 +26,6 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
   const [email, setEmail] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { toast } = useToast()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,7 +35,7 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
       const res = await fetch(`/api/task-lists/${taskListId}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
+        body: JSON.stringify({ email }),
       })
 
       const data = await res.json()
@@ -45,20 +44,13 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
         throw new Error(data.error || 'Failed to invite collaborator')
       }
 
-      toast({
-        title: 'Success',
-        description: 'Collaborator invited successfully'
-      })
+      toast.success('Collaborator invited successfully')
 
       setOpen(false)
       setEmail('')
       router.refresh()
     } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+      toast.error(error.message || 'Something went wrong')
     } finally {
       setLoading(false)
     }
@@ -72,6 +64,7 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
           Invite
         </Button>
       </DialogTrigger>
+
       <DialogContent>
         <form onSubmit={handleSubmit}>
           <DialogHeader>
@@ -80,6 +73,7 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
               Invite someone to collaborate on this task list
             </DialogDescription>
           </DialogHeader>
+
           <div className="space-y-4 py-4">
             <div className="space-y-2">
               <Label htmlFor="email">Email Address *</Label>
@@ -93,8 +87,14 @@ export function InviteCollaboratorDialog({ taskListId }: InviteCollaboratorDialo
               />
             </div>
           </div>
+
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setOpen(false)}
+              disabled={loading}
+            >
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>

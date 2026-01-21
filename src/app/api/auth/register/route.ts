@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import { prisma } from '@/lib/prisma'
 import { signToken } from '@/lib/jwt'
@@ -9,7 +10,6 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const { email, password, name } = body
 
-    // Validasi input
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' } as ApiResponse,
@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cek apakah email sudah terdaftar
     const existingUser = await prisma.user.findUnique({
       where: { email }
     })
@@ -36,10 +35,8 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hash password
     const hashedPassword = await bcrypt.hash(password, 10)
 
-    // Buat user baru
     const user = await prisma.user.create({
       data: {
         email,
@@ -53,29 +50,29 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // Generate JWT
-    const token = signToken({
+    // ✅ WAJIB await
+    const token = await signToken({
       userId: user.id,
       email: user.email
     })
 
-    // Set cookie
-    const response = NextResponse.json(
-      { 
-        data: user, 
-        message: 'Registration successful' 
-      } as ApiResponse,
-      { status: 201 }
-    )
-
-    response.cookies.set('token', token, {
+    // ✅ WAJIB await cookies()
+    const cookieStore = await cookies()
+    cookieStore.set('token', token, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/'
     })
 
-    return response
+    return NextResponse.json(
+      {
+        data: user,
+        message: 'Registration successful'
+      } as ApiResponse,
+      { status: 201 }
+    )
   } catch (error) {
     console.error('Register error:', error)
     return NextResponse.json(

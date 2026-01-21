@@ -13,16 +13,47 @@ import Link from 'next/link'
 import { DeleteTaskListButton } from '@/components/DeleteTaskListButton'
 import { ExportButton } from '@/components/ExportButton'
 
+// --- INTERFACES ---
+
+// Interface untuk Member di sidebar
+interface Member {
+  id: string
+  email: string
+  name: string | null
+  isOwner: boolean
+}
+
+// Interface untuk Task saat filtering
+interface TaskItem {
+  status: string
+}
+
+// Interface tambahan untuk memperbaiki error pada 'c' (Collaborator)
+interface CollaboratorWithUser {
+  user: {
+    id: string
+    email: string
+    name: string | null
+  }
+}
+
+// -----------------
+
 export default async function TaskListDetailPage({
   params,
 }: {
-  params: { id: string }
+  params: Promise<{ id: string }> // 🔥 Ubah tipe menjadi Promise
 }) {
+  const { id } = await params; // 🔥 Tambahkan await untuk mengurai params
   const user = await requireAuth()
+
+  if (!user) {
+    redirect('/login')
+  }
 
   const taskList = await prisma.taskList.findFirst({
     where: {
-      id: params.id,
+      id: id, // 🔥 Sekarang gunakan `id` bukan `params.id`
       deletedAt: null,
       OR: [
         { ownerId: user.userId },
@@ -73,18 +104,20 @@ export default async function TaskListDetailPage({
   }
 
   const isOwner = taskList.ownerId === user.userId
+  
+  // PERBAIKAN: Tambahkan tipe ': CollaboratorWithUser' pada parameter 'c'
   const allMembers = [
     { ...taskList.owner, isOwner: true },
-    ...taskList.collaborators.map(c => ({ ...c.user, isOwner: false }))
+    ...taskList.collaborators.map((c: CollaboratorWithUser) => ({ ...c.user, isOwner: false }))
   ]
 
+  // PERBAIKAN: Pastikan 't' memiliki tipe ': TaskItem'
   const stats = {
     total: taskList.tasks.length,
-    todo: taskList.tasks.filter(t => t.status === 'TODO').length,
-    inProgress: taskList.tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    done: taskList.tasks.filter(t => t.status === 'DONE').length,
+    todo: taskList.tasks.filter((t: TaskItem) => t.status === 'TODO').length,
+    inProgress: taskList.tasks.filter((t: TaskItem) => t.status === 'IN_PROGRESS').length,
+    done: taskList.tasks.filter((t: TaskItem) => t.status === 'DONE').length,
   }
-
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -180,7 +213,8 @@ export default async function TaskListDetailPage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {allMembers.map((member) => (
+                  {/* PERBAIKAN: Tambahkan tipe ': Member' pada 'member' */}
+                  {allMembers.map((member: Member) => (
                     <div key={member.id} className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs">

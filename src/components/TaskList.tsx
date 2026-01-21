@@ -13,7 +13,7 @@ import {
 } from './ui/select'
 import { TaskItem } from './TaskItem'
 import { Plus } from 'lucide-react'
-import { useToast } from '@/hooks/use-toast'
+import { toast } from 'sonner'
 
 interface Task {
   id: string
@@ -35,7 +35,6 @@ export function TaskList({ taskListId, tasks }: TaskListProps) {
   const [deadline, setDeadline] = useState('')
   const [loading, setLoading] = useState(false)
   const router = useRouter()
-  const { toast } = useToast()
 
   const handleAddTask = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -45,36 +44,19 @@ export function TaskList({ taskListId, tasks }: TaskListProps) {
       const res = await fetch('/api/tasks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title,
-          status,
-          deadline: deadline || null,
-          taskListId
-        })
+        body: JSON.stringify({ title, status, deadline: deadline || null, taskListId }),
       })
 
-      const data = await res.json()
+      if (!res.ok) throw new Error('Failed to create task')
 
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to create task')
-      }
-
-      toast({
-        title: 'Success',
-        description: 'Task created successfully'
-      })
-
+      toast.success('Task created')
+      setIsAdding(false)
       setTitle('')
       setStatus('TODO')
       setDeadline('')
-      setIsAdding(false)
       router.refresh()
-    } catch (error: any) {
-      toast({
-        title: 'Error',
-        description: error.message,
-        variant: 'destructive'
-      })
+    } catch (err: any) {
+      toast.error('Create failed', { description: err.message })
     } finally {
       setLoading(false)
     }
@@ -87,60 +69,25 @@ export function TaskList({ taskListId, tasks }: TaskListProps) {
       ))}
 
       {isAdding ? (
-        <form onSubmit={handleAddTask} className="border rounded-lg p-3 space-y-3">
-          <Input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="Task title"
-            required
-            autoFocus
-          />
+        <form onSubmit={handleAddTask} className="border p-3 rounded-lg space-y-3">
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} required />
+          <Select value={status} onValueChange={(v: any) => setStatus(v)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="TODO">To Do</SelectItem>
+              <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
+              <SelectItem value="DONE">Done</SelectItem>
+            </SelectContent>
+          </Select>
+          <Input type="date" value={deadline} onChange={(e) => setDeadline(e.target.value)} />
           <div className="flex gap-2">
-            <Select value={status} onValueChange={(v: any) => setStatus(v)}>
-              <SelectTrigger className="w-[150px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="TODO">To Do</SelectItem>
-                <SelectItem value="IN_PROGRESS">In Progress</SelectItem>
-                <SelectItem value="DONE">Done</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input
-              type="date"
-              value={deadline}
-              onChange={(e) => setDeadline(e.target.value)}
-              placeholder="Deadline (optional)"
-              className="flex-1"
-            />
-          </div>
-          <div className="flex gap-2">
-            <Button type="submit" disabled={loading} size="sm">
-              {loading ? 'Adding...' : 'Add Task'}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => {
-                setIsAdding(false)
-                setTitle('')
-                setStatus('TODO')
-                setDeadline('')
-              }}
-            >
-              Cancel
-            </Button>
+            <Button type="submit" disabled={loading}>Add</Button>
+            <Button type="button" variant="outline" onClick={() => setIsAdding(false)}>Cancel</Button>
           </div>
         </form>
       ) : (
-        <Button
-          variant="outline"
-          className="w-full"
-          onClick={() => setIsAdding(true)}
-        >
-          <Plus className="mr-2 h-4 w-4" />
-          Add Task
+        <Button variant="outline" className="w-full" onClick={() => setIsAdding(true)}>
+          <Plus className="mr-2 h-4 w-4" /> Add Task
         </Button>
       )}
     </div>

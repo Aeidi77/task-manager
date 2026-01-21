@@ -8,8 +8,36 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, ListTodo } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
+// Tambahkan Interface ini untuk mendefinisikan tipe data
+interface TaskListWithDetails {
+  id: string
+  name: string
+  description: string | null
+  ownerId: string
+  updatedAt: Date
+  owner: {
+    id: string
+    email: string
+    name: string | null
+  }
+  collaborators: {
+    user: {
+      id: string
+      email: string
+      name: string | null
+    }
+  }[]
+  tasks: {
+    status: string
+  }[]
+}
+
 export default async function DashboardPage() {
   const user = await requireAuth()
+
+  if (!user) {
+    redirect('/login')
+  }
 
   const taskLists = await prisma.taskList.findMany({
     where: {
@@ -55,6 +83,9 @@ export default async function DashboardPage() {
     }
   })
 
+
+ 
+
   return (
     <div className="min-h-screen">
       <Navbar />
@@ -82,7 +113,8 @@ export default async function DashboardPage() {
           </Card>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {taskLists.map((taskList) => {
+            {/* PERBAIKAN: Tambahkan tipe ': TaskListWithDetails' pada 'taskList' */}
+            {taskLists.map((taskList: TaskListWithDetails) => {
               const totalTasks = taskList.tasks.length
               const completedTasks = taskList.tasks.filter(
                 (t) => t.status === 'DONE'

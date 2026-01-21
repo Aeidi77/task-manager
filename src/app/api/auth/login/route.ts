@@ -1,75 +1,68 @@
-import { NextRequest, NextResponse } from 'next/server'
-import bcrypt from 'bcryptjs'
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import bcrypt from 'bcryptjs'
 import { signToken } from '@/lib/jwt'
-import { ApiResponse } from '@/types'
 
-export async function POST(request: NextRequest) {
+export async function POST(req: Request) {
   try {
-    const body = await request.json()
-    const { email, password } = body
+    const { email, password } = await req.json()
 
-    // Validasi input
     if (!email || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' } as ApiResponse,
+        { error: 'Email dan password wajib diisi' },
         { status: 400 }
       )
     }
 
-    // Cari user
     const user = await prisma.user.findUnique({
       where: { email }
     })
 
     if (!user) {
       return NextResponse.json(
-        { error: 'Invalid credentials' } as ApiResponse,
-        { status: 401 }
+        { error: 'Email atau password salah' },
+        { status: 400 }
       )
     }
 
-    // Verify password
-    const isValidPassword = await bcrypt.compare(password, user.password)
+    const isValid = await bcrypt.compare(password, user.password)
 
-    if (!isValidPassword) {
+    if (!isValid) {
       return NextResponse.json(
-        { error: 'Invalid credentials' } as ApiResponse,
+        { error: 'Email atau password salah' },
         { status: 401 }
       )
     }
 
-    // Generate JWT
-    const token = signToken({
+    const token = await signToken({
       userId: user.id,
       email: user.email
     })
 
-    // Set cookie
-    const response = NextResponse.json(
-      { 
-        data: {
-          id: user.id,
-          email: user.email,
-          name: user.name
-        },
-        message: 'Login successful' 
-      } as ApiResponse,
-      { status: 200 }
-    )
+    // ✅ SET COOKIE DENGAN NextResponse (INI KUNCINYA)
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+      }
+    })
 
-    response.cookies.set('token', token, {
+    response.cookies.set({
+      name: 'token',
+      value: token,
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
-      maxAge: 60 * 60 * 24 * 7 // 7 days
+      maxAge: 60 * 60 * 24 * 7,
+      path: '/',
     })
 
     return response
   } catch (error) {
     console.error('Login error:', error)
     return NextResponse.json(
-      { error: 'Internal server error' } as ApiResponse,
+      { error: 'Terjadi kesalahan server' },
       { status: 500 }
     )
   }

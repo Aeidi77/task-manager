@@ -3,10 +3,19 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ApiResponse } from '@/types'
 
-// GET: Ambil semua task lists milik user (owned + collaborated)
+// =====================
+// GET: semua task list
+// =====================
 export async function GET() {
   try {
     const user = await requireAuth()
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' } as ApiResponse,
+        { status: 401 }
+      )
+    }
 
     const taskLists = await prisma.taskList.findMany({
       where: {
@@ -15,54 +24,35 @@ export async function GET() {
           { ownerId: user.userId },
           {
             collaborators: {
-              some: {
-                userId: user.userId
-              }
+              some: { userId: user.userId }
             }
           }
         ]
       },
       include: {
         owner: {
-          select: {
-            id: true,
-            email: true,
-            name: true
-          }
+          select: { id: true, email: true, name: true }
         },
         collaborators: {
           include: {
             user: {
-              select: {
-                id: true,
-                email: true,
-                name: true
-              }
+              select: { id: true, email: true, name: true }
             }
           }
         },
         tasks: {
-          where: {
-            deletedAt: null
-          },
-          orderBy: {
-            order: 'asc'
-          }
+          where: { deletedAt: null },
+          orderBy: { order: 'asc' }
         }
       },
-      orderBy: {
-        updatedAt: 'desc'
-      }
+      orderBy: { updatedAt: 'desc' }
     })
 
-    return NextResponse.json({ data: taskLists } as ApiResponse)
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse,
-        { status: 401 }
-      )
-    }
+    return NextResponse.json(
+      { data: taskLists } as ApiResponse,
+      { status: 200 }
+    )
+  } catch (error) {
     console.error('Get task lists error:', error)
     return NextResponse.json(
       { error: 'Internal server error' } as ApiResponse,
@@ -71,12 +61,21 @@ export async function GET() {
   }
 }
 
-// POST: Buat task list baru
+// =====================
+// POST: buat task list
+// =====================
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
-    const body = await request.json()
-    const { name, description } = body
+
+    if (!user) {
+      return NextResponse.json(
+        { error: 'Unauthorized' } as ApiResponse,
+        { status: 401 }
+      )
+    }
+
+    const { name, description } = await request.json()
 
     if (!name || name.trim() === '') {
       return NextResponse.json(
@@ -93,38 +92,27 @@ export async function POST(request: NextRequest) {
       },
       include: {
         owner: {
-          select: {
-            id: true,
-            email: true,
-            name: true
-          }
+          select: { id: true, email: true, name: true }
         },
         collaborators: {
           include: {
             user: {
-              select: {
-                id: true,
-                email: true,
-                name: true
-              }
+              select: { id: true, email: true, name: true }
             }
           }
         },
-        tasks: true
+        tasks: true // ✅ FIX DI SINI
       }
     })
 
     return NextResponse.json(
-      { data: taskList, message: 'Task list created successfully' } as ApiResponse,
+      {
+        data: taskList,
+        message: 'Task list created successfully'
+      } as ApiResponse,
       { status: 201 }
     )
-  } catch (error: any) {
-    if (error.message === 'Unauthorized') {
-      return NextResponse.json(
-        { error: 'Unauthorized' } as ApiResponse,
-        { status: 401 }
-      )
-    }
+  } catch (error) {
     console.error('Create task list error:', error)
     return NextResponse.json(
       { error: 'Internal server error' } as ApiResponse,

@@ -3,18 +3,24 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ApiResponse } from '@/types'
 
-// PATCH: Update task
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth()
-    const { id } = params
+    const { id } = await context.params
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Task ID is required' } as ApiResponse,
+        { status: 400 }
+      )
+    }
+
     const body = await request.json()
     const { title, status, deadline, order } = body
 
-    // Cek akses melalui task list
     const task = await prisma.task.findFirst({
       where: {
         id,
@@ -22,8 +28,8 @@ export async function PATCH(
       },
       include: {
         taskList: {
-          include: {
-            collaborators: true
+          select: {
+            ownerId: true
           }
         }
       }
@@ -35,26 +41,24 @@ export async function PATCH(
         { status: 404 }
       )
     }
+    const isOwner = task.taskList.ownerId === user.userId
+    const isTaskCreator = task.createdById === user.userId
 
-    // Cek apakah user punya akses
-    const hasAccess = 
-      task.taskList.ownerId === user.userId ||
-      task.taskList.collaborators.some(c => c.userId === user.userId)
-
-    if (!hasAccess) {
+    if (!isOwner && !isTaskCreator) {
       return NextResponse.json(
         { error: 'You do not have permission to update this task' } as ApiResponse,
         { status: 403 }
       )
     }
 
-    // Update task
     const updated = await prisma.task.update({
       where: { id },
       data: {
         ...(title !== undefined && { title: title.trim() }),
         ...(status !== undefined && { status }),
-        ...(deadline !== undefined && { deadline: deadline ? new Date(deadline) : null }),
+        ...(deadline !== undefined && {
+          deadline: deadline ? new Date(deadline) : null
+        }),
         ...(order !== undefined && { order })
       }
     })
@@ -69,6 +73,7 @@ export async function PATCH(
         { status: 401 }
       )
     }
+
     console.error('Update task error:', error)
     return NextResponse.json(
       { error: 'Internal server error' } as ApiResponse,
@@ -77,16 +82,22 @@ export async function PATCH(
   }
 }
 
-// DELETE: Soft delete task
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await requireAuth()
-    const { id } = params
 
-    // Cek akses melalui task list
+    const { id } = await context.params
+
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Task ID is required' } as ApiResponse,
+        { status: 400 }
+      )
+    }
+
     const task = await prisma.task.findFirst({
       where: {
         id,
@@ -94,8 +105,8 @@ export async function DELETE(
       },
       include: {
         taskList: {
-          include: {
-            collaborators: true
+          select: {
+            ownerId: true
           }
         }
       }
@@ -108,19 +119,16 @@ export async function DELETE(
       )
     }
 
-    // Cek apakah user punya akses
-    const hasAccess = 
-      task.taskList.ownerId === user.userId ||
-      task.taskList.collaborators.some(c => c.userId === user.userId)
+    const isOwner = task.taskList.ownerId === user.userId
+    const isTaskCreator = task.createdById === user.userId
 
-    if (!hasAccess) {
+    if (!isOwner && !isTaskCreator) {
       return NextResponse.json(
         { error: 'You do not have permission to delete this task' } as ApiResponse,
         { status: 403 }
       )
     }
 
-    // Soft delete
     await prisma.task.update({
       where: { id },
       data: { deletedAt: new Date() }
@@ -136,6 +144,7 @@ export async function DELETE(
         { status: 401 }
       )
     }
+
     console.error('Delete task error:', error)
     return NextResponse.json(
       { error: 'Internal server error' } as ApiResponse,

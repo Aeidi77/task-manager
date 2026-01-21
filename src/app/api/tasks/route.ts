@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ApiResponse } from '@/types'
 
-// POST: Buat task baru
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Cek akses ke task list
     const taskList = await prisma.taskList.findFirst({
       where: {
         id: taskListId,
@@ -60,7 +59,6 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Hitung order berikutnya
     const nextOrder = taskList.tasks.length > 0 ? taskList.tasks[0].order + 1 : 0
 
     const task = await prisma.task.create({

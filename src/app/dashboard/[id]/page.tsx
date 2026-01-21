@@ -13,9 +13,7 @@ import Link from 'next/link'
 import { DeleteTaskListButton } from '@/components/DeleteTaskListButton'
 import { ExportButton } from '@/components/ExportButton'
 
-// --- INTERFACES ---
 
-// Interface untuk Member di sidebar
 interface Member {
   id: string
   email: string
@@ -23,12 +21,10 @@ interface Member {
   isOwner: boolean
 }
 
-// Interface untuk Task saat filtering
 interface TaskItem {
   status: string
 }
 
-// Interface tambahan untuk memperbaiki error pada 'c' (Collaborator)
 interface CollaboratorWithUser {
   user: {
     id: string
@@ -37,14 +33,12 @@ interface CollaboratorWithUser {
   }
 }
 
-// -----------------
-
 export default async function TaskListDetailPage({
   params,
 }: {
-  params: Promise<{ id: string }> // 🔥 Ubah tipe menjadi Promise
+  params: Promise<{ id: string }> 
 }) {
-  const { id } = await params; // 🔥 Tambahkan await untuk mengurai params
+  const { id } = await params;
   const user = await requireAuth()
 
   if (!user) {
@@ -53,7 +47,7 @@ export default async function TaskListDetailPage({
 
   const taskList = await prisma.taskList.findFirst({
     where: {
-      id: id, // 🔥 Sekarang gunakan `id` bukan `params.id`
+      id: id,
       deletedAt: null,
       OR: [
         { ownerId: user.userId },
@@ -105,13 +99,11 @@ export default async function TaskListDetailPage({
 
   const isOwner = taskList.ownerId === user.userId
   
-  // PERBAIKAN: Tambahkan tipe ': CollaboratorWithUser' pada parameter 'c'
   const allMembers = [
     { ...taskList.owner, isOwner: true },
     ...taskList.collaborators.map((c: CollaboratorWithUser) => ({ ...c.user, isOwner: false }))
   ]
-
-  // PERBAIKAN: Pastikan 't' memiliki tipe ': TaskItem'
+  
   const stats = {
     total: taskList.tasks.length,
     todo: taskList.tasks.filter((t: TaskItem) => t.status === 'TODO').length,
@@ -158,9 +150,7 @@ export default async function TaskListDetailPage({
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Content */}
           <div className="lg:col-span-3 space-y-6">
-            {/* Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <Card>
                 <CardHeader className="pb-2">
@@ -188,7 +178,6 @@ export default async function TaskListDetailPage({
               </Card>
             </div>
 
-            {/* Tasks */}
             <Card>
               <CardHeader>
                 <CardTitle>Tasks</CardTitle>
@@ -202,7 +191,6 @@ export default async function TaskListDetailPage({
             </Card>
           </div>
 
-          {/* Sidebar */}
           <div className="lg:col-span-1">
             <Card>
               <CardHeader>
@@ -213,7 +201,6 @@ export default async function TaskListDetailPage({
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
-                  {/* PERBAIKAN: Tambahkan tipe ': Member' pada 'member' */}
                   {allMembers.map((member: Member) => (
                     <div key={member.id} className="flex items-center gap-3">
                       <Avatar className="h-8 w-8">

@@ -33,10 +33,8 @@ export function usePolling<T>(
       return
     }
 
-    // Initial fetch
     fetchData()
 
-    // Setup polling
     intervalRef.current = setInterval(fetchData, interval)
 
     return () => {

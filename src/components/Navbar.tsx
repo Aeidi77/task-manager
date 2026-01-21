@@ -17,10 +17,10 @@ export function Navbar() {
     
     const fetchUser = async () => {
       try {
-        const res = await fetch('/api/auth/logout')
+        const res = await fetch('/api/auth/me', {method: "GET"})
         if (res.ok && isMounted.current) {
           const data = await res.json()
-          setUserId(data.data.id)
+          setUserId(data.userId)
         }
       } catch (error) {
         console.error('Error fetching user:', error)
@@ -30,19 +30,18 @@ export function Navbar() {
     fetchUser()
 
     return () => {
-      isMounted.current = false // ✅ Cleanup
+      isMounted.current = false 
     }
   }, [])
 
   const handleLogout = async () => {
     try {
       await fetch('/api/auth/logout', {
-        method: 'DELETE'
+        method: 'POST'
       })
       router.push('/login')
-      // Hapus router.refresh() atau gunakan setTimeout
       setTimeout(() => {
-        window.location.reload() // Atau biarkan router.push saja
+        window.location.reload() 
       }, 100)
     } catch (error) {
       console.error('Logout error:', error)
@@ -61,7 +60,6 @@ export function Navbar() {
           <Button 
             variant="outline" 
             onClick={handleLogout}
-            // Tambahkan key untuk force re-render jika diperlukan
             key={`logout-${Date.now()}`}
           >
             Logout

@@ -10,7 +10,6 @@ export async function getCurrentUser(): Promise<AppJWTPayload | null> {
   return verifyToken(token)
 }
 
-// ❗️tidak redirect, tidak throw
 export async function requireAuth(): Promise<AppJWTPayload | null> {
   return getCurrentUser()
 }

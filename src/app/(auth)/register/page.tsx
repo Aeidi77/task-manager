@@ -42,7 +42,7 @@ export default function RegisterPage() {
 
       toast.success('Account created successfully')
 
-      router.push('/dashboard')
+      router.push('/login')
       router.refresh()
     } catch (error: unknown) {
       if (error instanceof Error) {

@@ -104,40 +104,66 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
-  const user = await requireAuth()
-  if (!user) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
+  try {
+    const user = await requireAuth()
+    const { id } = await context.params   
 
-  const { id } = params
-
-  const taskList = await prisma.taskList.findFirst({
-    where: {
-      id,
-      ownerId: user.userId,
-      deletedAt: null
+    if (!id) {
+      return NextResponse.json(
+        { error: 'Task list ID is required' } as ApiResponse,
+        { status: 400 }
+      )
     }
-  })
+    const taskList = await prisma.taskList.findUnique({
+      where: { id },
+      select: {
+        ownerId: true,
+        deletedAt: true
+      }
+    })
 
-  if (!taskList) {
+    if (!taskList || taskList.deletedAt) {
+      return NextResponse.json(
+        { error: 'Task list not found' } as ApiResponse,
+        { status: 404 }
+      )
+    }
+
+    if (taskList.ownerId !== user.userId) {
+      return NextResponse.json(
+        { error: 'You are not allowed to delete this task list' } as ApiResponse,
+        { status: 403 }
+      )
+    }
+    await prisma.$transaction([
+      prisma.task.updateMany({
+        where: { taskListId: id },
+        data: { deletedAt: new Date() }
+      }),
+      prisma.taskList.update({
+        where: { id },
+        data: { deletedAt: new Date() }
+      })
+    ])
+
     return NextResponse.json(
-      { error: 'No permission' } as ApiResponse,
-      { status: 403 }
+      { message: 'Task list deleted successfully' } as ApiResponse
+    )
+
+  } catch (error: any) {
+    if (error.message === 'Unauthorized') {
+      return NextResponse.json(
+        { error: 'Unauthorized' } as ApiResponse,
+        { status: 401 }
+      )
+    }
+
+    console.error('Delete task list error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error' } as ApiResponse,
+      { status: 500 }
     )
   }
-
-  await prisma.$transaction([
-    prisma.task.updateMany({
-      where: { taskListId: id },
-      data: { deletedAt: new Date() }
-    }),
-    prisma.taskList.update({
-      where: { id },
-      data: { deletedAt: new Date() }
-    })
-  ])
-
-  return NextResponse.json({ message: 'Deleted' } as ApiResponse)
 }

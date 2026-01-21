@@ -38,8 +38,7 @@ export async function POST(req: Request) {
       userId: user.id,
       email: user.email
     })
-
-    // ✅ SET COOKIE DENGAN NextResponse (INI KUNCINYA)
+    
     const response = NextResponse.json({
       success: true,
       user: {

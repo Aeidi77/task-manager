@@ -28,19 +28,21 @@ interface NotificationsProps {
 }
 
 export function RealtimeNotifications({ userId }: NotificationsProps) {
-  const [lastCheck, setLastCheck] = useState<Date>(new Date())
+  const [lastCheck, setLastCheck] = useState<number>(Date.now())
   const [notifications, setNotifications] = useState<TaskUpdate[]>([])
   const [unreadCount, setUnreadCount] = useState(0)
 
-  // Fetch data task list
   const fetchUpdates = async () => {
-    const res = await fetch('/api/task-lists')
-    if (!res.ok) return []
-    const data = await res.json()
-    return data.data || []
+    try {
+      const res = await fetch('/api/task-lists')
+      if (!res.ok) return []
+      const data = await res.json()
+      return data.data || []
+    } catch (err) {
+      console.error('Fetch task lists failed', err)
+      return []
+    }
   }
-
-  // Polling setiap 10 detik
   const { data: taskLists } = usePolling(fetchUpdates, 10000)
 
   useEffect(() => {
@@ -49,22 +51,17 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
     const newUpdates: TaskUpdate[] = []
 
     taskLists.forEach((taskList: any) => {
-      const updatedAt = new Date(taskList.updatedAt)
+      const updatedAtTime = new Date(taskList.updatedAt).getTime()
+      if (isNaN(updatedAtTime)) return
 
-      // Update setelah lastCheck & bukan oleh user sendiri
-      if (updatedAt > lastCheck && taskList.ownerId !== userId) {
-        const isCollaboratorUpdate = taskList.collaborators?.some(
-          (c: any) => c.userId !== userId
-        )
-
-        if (isCollaboratorUpdate) {
-          newUpdates.push({
-            taskListId: taskList.id,
-            taskListName: taskList.name,
-            updatedAt: taskList.updatedAt,
-            updatedBy: taskList.owner?.email || 'Unknown',
-          })
-        }
+      const updatedBy = taskList.updatedBy || taskList.owner?.email || 'Unknown'
+      if (updatedAtTime > lastCheck && updatedBy !== userId) {
+        newUpdates.push({
+          taskListId: taskList.id,
+          taskListName: taskList.name,
+          updatedAt: taskList.updatedAt,
+          updatedBy: updatedBy,
+        })
       }
     })
 
@@ -72,14 +69,13 @@ export function RealtimeNotifications({ userId }: NotificationsProps) {
       setNotifications((prev) => [...newUpdates, ...prev].slice(0, 10))
       setUnreadCount((prev) => prev + newUpdates.length)
 
-      // Toast pakai Sonner
       toast('New Update', {
-        description: `${newUpdates[0].taskListName} has been updated`,
+        description: `${newUpdates[0].taskListName} has been updated by ${newUpdates[0].updatedBy}`,
       })
-    }
 
-    setLastCheck(new Date())
-  }, [taskLists, userId])
+      setLastCheck(Date.now())
+    }
+  }, [taskLists, userId, lastCheck])
 
   const handleClearAll = () => {
     setNotifications([])

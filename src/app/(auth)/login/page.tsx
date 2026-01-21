@@ -38,10 +38,8 @@ export default function LoginPage() {
 
       toast.success('Login berhasil')
 
-      // PERBAIKAN: Gunakan window.location.href untuk memaksa reload penuh.
-      // Ini memastikan cookie tersimpan sebelum pindah ke dashboard
       window.location.href = '/dashboard'
-      
+
     } catch (error) {
       toast.error(
         error instanceof Error ? error.message : 'Login gagal'

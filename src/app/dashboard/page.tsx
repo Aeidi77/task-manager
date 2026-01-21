@@ -8,7 +8,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Users, ListTodo } from 'lucide-react'
 import { formatDate } from '@/lib/utils'
 
-// Tambahkan Interface ini untuk mendefinisikan tipe data
 interface TaskListWithDetails {
   id: string
   name: string

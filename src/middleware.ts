@@ -5,15 +5,11 @@ export function middleware(request: NextRequest) {
   const token = request.cookies.get('token')?.value
   const { pathname } = request.nextUrl
 
-  // public pages
   const publicRoutes = ['/', '/login', '/register']
 
-  // ❌ belum login tapi ke dashboard
   if (!token && pathname.startsWith('/dashboard')) {
     return NextResponse.redirect(new URL('/login', request.url))
   }
-
-  // ✅ biarkan semua request lain lewat
   return NextResponse.next()
 }
 

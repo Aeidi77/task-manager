@@ -1,36 +1,230 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 📝 Task Manager App
 
-## Getting Started
+A modern **Task Management Application** built with **Next.js (App Router)**, **Prisma ORM**, and **PostgreSQL**. This app supports **authentication**, **task ownership**, **collaboration**, and **role-based access control** (owner vs collaborator).
 
-First, run the development server:
+---
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 🚀 Features
+
+* ✅ User Authentication (Login / Logout)
+* 🧑‍💼 Task Ownership (Creator)
+* 🤝 Task Collaboration (Collaborators)
+* 🔐 Authorization Rules
+
+  * Task **owner** can update & delete all tasks
+  * User can only update/delete **their own tasks**
+* 📋 Task List Management
+* 🗑 Soft Delete / Hard Delete (configurable)
+* ⚡ Built with Next.js App Router
+
+---
+
+## 🧰 Tech Stack
+
+* **Frontend & Backend**: Next.js 14 (App Router)
+* **Database**: PostgreSQL
+* **ORM**: Prisma
+* **Auth**: Custom session / middleware-based auth
+* **Package Manager**: pnpm
+
+## 📁 Project Structure
+
+```
+task-manager/
+├── prisma/
+│   ├── schema.prisma
+│   └── migrations/
+├── src/
+│   ├── app/
+│   │   ├── api/
+│   │   │   ├── auth/
+│   │   │   └── tasks/
+│   │   │       └── [id]/route.ts
+│   │   └── page.tsx
+│   ├── lib/
+│   │   ├── prisma.ts
+│   │   └── auth.ts
+│   └── types/
+├── .env
+├── package.json
+└── README.md
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚙️ Prerequisites
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Make sure you have the following installed:
 
-## Learn More
+* **Node.js** >= 18
+* **pnpm** >= 8
+* **PostgreSQL**
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 🛠 Installation
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 1️⃣ Clone Repository
 
-## Deploy on Vercel
+```bash
+git clone https://github.com/Aeidi77/task-manager.git
+cd task-manager
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 2️⃣ Install Dependencies
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+pnpm install
+```
+
+---
+
+## 🔐 Environment Variables
+
+Create a `.env` file in the root directory:
+
+```env
+DATABASE_URL="postgresql://USER:PASSWORD@localhost:5432/task_manager"
+NEXTAUTH_SECRET="your-secret-key"
+```
+
+> ⚠️ Replace `USER`, `PASSWORD`, and database name accordingly.
+
+---
+
+## 🧬 Database Setup
+
+### 1️⃣ Generate Prisma Client
+
+```bash
+pnpm prisma generate
+```
+
+### 2️⃣ Run Migrations
+
+```bash
+pnpm prisma migrate dev
+```
+
+### 3️⃣ (Optional) Open Prisma Studio
+
+```bash
+pnpm prisma studio
+```
+
+---
+
+## ▶️ Running the App
+
+### Development Mode
+
+```bash
+pnpm dev
+```
+
+App will be running at:
+
+```
+http://localhost:3000
+```
+
+---
+
+## 🔁 API Endpoints (Example)
+
+### 🔹 Update Task
+
+```
+PATCH /api/tasks/:id
+```
+
+Rules:
+
+* Owner → can update all tasks
+* User → can update their own tasks only
+
+### 🔹 Delete Task
+
+```
+DELETE /api/tasks/:id
+```
+
+Rules:
+
+* Owner → can delete all tasks
+* User → can delete their own tasks only
+
+---
+
+## 🔒 Authorization Logic (Summary)
+
+```ts
+const isOwner = task.taskList.ownerId === user.userId
+const isTaskCreator = task.createdById === user.userId
+
+if (!isOwner && !isTaskCreator) {
+  throw new Error('Forbidden')
+}
+```
+
+---
+
+## 🧪 Common Issues
+
+### ❌ Prisma error: `id: undefined`
+
+Cause:
+
+* `params.id` not awaited in App Router
+
+Solution:
+
+```ts
+export async function PATCH(req, context) {
+  const { id } = await context.params
+}
+```
+
+---
+
+## 📌 Scripts
+
+```bash
+pnpm dev         # Run development server
+pnpm build       # Build production app
+pnpm start       # Start production server
+pnpm prisma      # Prisma CLI
+```
+## Create and Start docker
+```bash
+docker-compose create
+docker-compose start
+```
+
+---
+
+## 🤝 Contributing
+
+Pull requests are welcome!
+
+1. Fork the repo
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Open a Pull Request
+
+---
+
+## 📄 License
+
+MIT License © 2026
+
+---
+
+## 🙌 Author
+
+**Aeidi Muttaqin**
+
+---
+
+If you have questions or want to extend this project (roles, RBAC, audit log, etc.), feel free to ask 🚀

@@ -3,9 +3,7 @@ import { requireAuth } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { ApiResponse } from '@/types'
 
-// =====================
-// GET: semua task list
-// =====================
+
 export async function GET() {
   try {
     const user = await requireAuth()
@@ -60,10 +58,6 @@ export async function GET() {
     )
   }
 }
-
-// =====================
-// POST: buat task list
-// =====================
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAuth()
@@ -101,7 +95,7 @@ export async function POST(request: NextRequest) {
             }
           }
         },
-        tasks: true // ✅ FIX DI SINI
+        tasks: true 
       }
     })
 

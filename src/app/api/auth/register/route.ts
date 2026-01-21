@@ -50,13 +50,11 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // ✅ WAJIB await
     const token = await signToken({
       userId: user.id,
       email: user.email
     })
 
-    // ✅ WAJIB await cookies()
     const cookieStore = await cookies()
     cookieStore.set('token', token, {
       httpOnly: true,
